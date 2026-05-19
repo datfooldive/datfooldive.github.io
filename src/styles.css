@@ -1,4 +1,4 @@
-@import "@fontsource/maple-mono/400.css";
+@import "./fonts.css";
 @import "tailwindcss";
 
 :root {
