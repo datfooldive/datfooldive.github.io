@@ -1,0 +1,81 @@
+@import "@fontsource/maple-mono/400.css";
+@import "tailwindcss";
+
+:root {
+    --bg: oklch(98% 0.002 250);
+    --fg: oklch(20% 0.015 250);
+    --muted: oklch(45% 0.015 250);
+    --link: oklch(45% 0.03 250);
+    --noise-blend: multiply;
+    --noise-opacity: 0.25;
+    background-color: var(--bg);
+    color: var(--fg);
+    font-family: "Maple Mono", ui-monospace, monospace;
+    font-weight: 400;
+    transition:
+        background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.dark {
+    --bg: oklch(15% 0.002 250);
+    --fg: oklch(96% 0.008 250);
+    --muted: oklch(75% 0.008 250);
+    --link: oklch(82% 0.02 250);
+    --noise-blend: screen;
+    --noise-opacity: 0.38;
+}
+
+body {
+    margin: 0;
+    background-color: var(--bg);
+    color: var(--fg);
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    transition:
+        background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
+        color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+body::before {
+    position: fixed;
+    inset: 0;
+    z-index: 0;
+    pointer-events: none;
+    content: "";
+    opacity: var(--noise-opacity);
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 160 160' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.45'/%3E%3C/svg%3E");
+    background-size: 160px 160px;
+    mix-blend-mode: var(--noise-blend);
+    transition: opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+a {
+    color: var(--link);
+    text-decoration: underline;
+    text-underline-offset: 0.18em;
+    transition: color 0.3s ease;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+    color: var(--fg);
+    transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+p,
+li {
+    color: var(--muted);
+    transition: color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.theme-toggle {
+    color: var(--fg);
+    background: transparent;
+    border: none;
+}
