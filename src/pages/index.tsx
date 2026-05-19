@@ -8,22 +8,21 @@ export default async function HomePage() {
           Datfooldive
         </h1>
         <p className="text-lg leading-8 sm:text-xl sm:leading-9">
-          Linux and programming enthusiast. Suka Linux, suka ricing Linux, dan
-          suka mencoba hal-hal baru.
+          Linux and programming enthusiast. Menyukai ricing, bereksperimen
+          dengan hal-hal baru, dan segala hal tentang Linux.
         </p>
       </section>
 
       <section className="space-y-4">
         <h2 className="text-[17px] font-normal sm:text-lg">About</h2>
         <p>
-          Memiliki keahlian di DevOps dan programming. Sudah sekitar tiga tahun
-          menjadi programmer, dan suka bereksperimen dengan sistem, tools,
-          workflow, dan hal-hal kecil yang membuat komputer terasa lebih
-          personal.
+          Fokus di DevOps dan programming, dengan 3 tahun
+          pengalaman. Suka bereksperimen dengan sistem, tools, workflow, dan
+          hal-hal kecil yang membuat setup terasa lebih personal.
         </p>
         <p>
           Bagian dari komunitas <a href="https://www.gnuweeb.org/">Gnuweeb</a>.
-          Di luar programming, suka anime dan baca manga.
+          Di luar programming, sangat menyukai anime dan manga.
         </p>
       </section>
 
