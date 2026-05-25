@@ -36,7 +36,7 @@ export default function PageContent() {
         </h2>
         <ul className="space-y-2">
           <li>
-            <a href="mailto:datfooldive@gmail.com">Email</a>
+            <a href="mailto:datfooldive@gnuweeb.org">Email</a>
           </li>
           <li>
             <a href="https://t.me/datfooldive">Telegram</a>
