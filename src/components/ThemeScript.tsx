@@ -1,25 +1,19 @@
 "use client";
 
-const script = `
-(function () {
-  try {
-    var stored = localStorage.getItem('theme');
-    var systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-    if (stored === 'dark' || (!stored && systemDark)) {
-      document.documentElement.classList.add('dark');
-    } else {
-      document.documentElement.classList.remove('dark');
-    }
-  } catch (e) {}
-})();
-`;
+import { useLayoutEffect } from "react";
 
 export default function ThemeScript() {
-  return (
-    <script
-      // @ts-ignore
-      suppressHydrationWarning
-      dangerouslySetInnerHTML={{ __html: script }}
-    />
-  );
+  useLayoutEffect(() => {
+    const stored = localStorage.getItem("theme");
+    const systemDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
+    const isDark = stored === "dark" || (!stored && systemDark);
+
+    document.documentElement.classList.toggle("dark", isDark);
+
+    if (!stored) {
+      localStorage.setItem("theme", isDark ? "dark" : "light");
+    }
+  }, []);
+
+  return null;
 }
