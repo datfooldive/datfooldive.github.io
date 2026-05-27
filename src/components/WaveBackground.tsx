@@ -228,9 +228,9 @@ const fragmentShader = `
     vec3 ray = getRay(fragCoord);
 
     float NIGHT_EPS = 0.001;
+    vec3 C;
 
     if(ray.y >= 0.0) {
-      vec3 C;
       float horizonFactor = smoothstep(0.02, 0.25, ray.y);
       float nightBlend = pow(u_night, mix(0.35, 1.0, horizonFactor));
 
@@ -244,51 +244,67 @@ const fragmentShader = `
         C = mix(daySky, nightSky, nightBlend);
       }
 
-      gl_FragColor = vec4(aces_tonemap(C * 2.0), 1.0);
-      return;
+      C = aces_tonemap(C * 2.0);
+    } else {
+      vec3 waterPlaneHigh = vec3(0.0, 0.0, 0.0);
+      vec3 waterPlaneLow = vec3(0.0, -WATER_DEPTH, 0.0);
+      vec3 origin = vec3(u_time * 0.2, CAMERA_HEIGHT, 1.0);
+
+      float highPlaneHit = intersectPlane(origin, ray, waterPlaneHigh, vec3(0.0, 1.0, 0.0));
+      float lowPlaneHit = intersectPlane(origin, ray, waterPlaneLow, vec3(0.0, 1.0, 0.0));
+      vec3 highHitPos = origin + ray * highPlaneHit;
+      vec3 lowHitPos = origin + ray * lowPlaneHit;
+
+      float dist = raymarchWater(origin, highHitPos, lowHitPos, WATER_DEPTH);
+      vec3 waterHitPos = origin + ray * dist;
+
+      float eps = max(0.01, dist * 0.004);
+      vec3 N = getNormal(waterHitPos.xz, eps, WATER_DEPTH);
+      N = mix(N, vec3(0.0, 1.0, 0.0), 0.8 * min(1.0, sqrt(dist * 0.01) * 1.1));
+
+      float waveH = getWaves(waterHitPos.xz);
+      float waveLine = smoothstep(0.0, 0.03, abs(waveH) - 0.15);
+      float detail = 1.0 - waveLine;
+
+      float fresnelSharp = 0.3 + 0.7 * pow(1.0 - max(0.0, dot(-N, ray)), 5.0);
+      float fresnelFlat = 0.3 + 0.7 * pow(1.0 - max(0.0, dot(vec3(0.0, 1.0, 0.0), -ray)), 5.0);
+      float fresnelBlend = min(1.0, sqrt(dist * 0.01) * 1.1);
+      float fresnel = mix(fresnelSharp, fresnelFlat, fresnelBlend);
+
+      vec3 dayWater = mix(vec3(0.58, 0.62, 0.67), vec3(0.72, 0.76, 0.8), smoothstep(-0.5, 0.5, waterHitPos.y));
+      vec3 nightWater = mix(vec3(0.02, 0.02, 0.03), vec3(0.04, 0.04, 0.05), smoothstep(-0.5, 0.5, waterHitPos.y));
+
+      vec3 waterBase = mix(dayWater, nightWater, u_night);
+      vec3 waterColor = mix(waterBase, vec3(1.0), detail * 0.25) * fresnel;
+
+      float surfaceTexture = fbm(waterHitPos.xz * 2.0 + u_time * 0.3) * 0.15;
+      waterColor += vec3(surfaceTexture) * 0.1;
+
+      vec3 fogColor = mix(vec3(0.4), vec3(0.04), u_night);
+      float fogAmount = 1.0 - exp(-dist * 0.02);
+      waterColor = mix(waterColor, fogColor, fogAmount);
+
+      float waveBrightness = mix(1.4, 1.9, u_night);
+      C = aces_tonemap(waterColor * waveBrightness);
     }
 
-    vec3 waterPlaneHigh = vec3(0.0, 0.0, 0.0);
-    vec3 waterPlaneLow = vec3(0.0, -WATER_DEPTH, 0.0);
-    vec3 origin = vec3(u_time * 0.2, CAMERA_HEIGHT, 1.0);
+    float gray = dot(C, vec3(0.299, 0.587, 0.114));
+    float t = u_time * 1.5;
+    vec2 uv = gl_FragCoord.xy / u_resolution;
+    float seed = dot(uv, vec2(12.9898, 78.233));
+    float noise = fract(sin(seed) * 43758.5453 + t);
+    float variance = mix(0.85, 0.7, u_night);
+    noise = (1.0 / (variance * sqrt(2.0 * 3.1415))) * exp(-(((noise - 0.0) * (noise - 0.0)) / (2.0 * (variance * variance))));
+    vec3 grain = vec3(noise) * (1.0 - vec3(gray));
+    float grainIntensity = mix(0.6, 0.1, u_night);
+    gray = gray + grain.r * grainIntensity;
+    gray = clamp(gray, 0.0, 1.0);
 
-    float highPlaneHit = intersectPlane(origin, ray, waterPlaneHigh, vec3(0.0, 1.0, 0.0));
-    float lowPlaneHit = intersectPlane(origin, ray, waterPlaneLow, vec3(0.0, 1.0, 0.0));
-    vec3 highHitPos = origin + ray * highPlaneHit;
-    vec3 lowHitPos = origin + ray * lowPlaneHit;
+    vec3 dark = mix(vec3(0.235), vec3(0.02), u_night);
+    vec3 light = mix(vec3(0.836), vec3(1.0), u_night);
+    C = mix(dark, light, gray);
 
-    float dist = raymarchWater(origin, highHitPos, lowHitPos, WATER_DEPTH);
-    vec3 waterHitPos = origin + ray * dist;
-
-    float eps = max(0.01, dist * 0.004);
-    vec3 N = getNormal(waterHitPos.xz, eps, WATER_DEPTH);
-    N = mix(N, vec3(0.0, 1.0, 0.0), 0.8 * min(1.0, sqrt(dist * 0.01) * 1.1));
-
-    float waveH = getWaves(waterHitPos.xz);
-    float waveLine = smoothstep(0.0, 0.03, abs(waveH) - 0.15);
-    float detail = 1.0 - waveLine;
-
-    float fresnelSharp = 0.3 + 0.7 * pow(1.0 - max(0.0, dot(-N, ray)), 5.0);
-    float fresnelFlat = 0.3 + 0.7 * pow(1.0 - max(0.0, dot(vec3(0.0, 1.0, 0.0), -ray)), 5.0);
-    float fresnelBlend = min(1.0, sqrt(dist * 0.01) * 1.1);
-    float fresnel = mix(fresnelSharp, fresnelFlat, fresnelBlend);
-
-    vec3 dayWater = mix(vec3(0.58, 0.62, 0.67), vec3(0.72, 0.76, 0.8), smoothstep(-0.5, 0.5, waterHitPos.y));
-    vec3 nightWater = mix(vec3(0.02, 0.02, 0.03), vec3(0.04, 0.04, 0.05), smoothstep(-0.5, 0.5, waterHitPos.y));
-
-    vec3 waterBase = mix(dayWater, nightWater, u_night);
-    vec3 waterColor = mix(waterBase, vec3(1.0), detail * 0.25) * fresnel;
-
-    float surfaceTexture = fbm(waterHitPos.xz * 2.0 + u_time * 0.3) * 0.15;
-    waterColor += vec3(surfaceTexture) * 0.1;
-
-    vec3 fogColor = mix(vec3(0.4), vec3(0.04), u_night);
-    float fogAmount = 1.0 - exp(-dist * 0.02);
-    waterColor = mix(waterColor, fogColor, fogAmount);
-
-    float waveBrightness = mix(1.4, 1.9, u_night);
-
-    gl_FragColor = vec4(aces_tonemap(waterColor * waveBrightness), 1.0);
+    gl_FragColor = vec4(C, 1.0);
   }
 `;
 
