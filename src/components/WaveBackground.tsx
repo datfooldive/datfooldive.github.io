@@ -15,12 +15,12 @@ const fragmentShader = `
   uniform vec2 u_resolution;
   uniform float u_time;
   uniform float u_night;
+  uniform float u_mobile;
 
   #define PI 3.14159265359
   #define DRAG_MULT 0.38
   #define WATER_DEPTH 1.0
   #define CAMERA_HEIGHT 1.5
-  #define FBM_OCTAVES 6
 
   float hash21(vec2 p) {
     return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
@@ -38,10 +38,12 @@ const fragmentShader = `
   }
 
   float fbm(vec2 p) {
+    int octaves = u_mobile > 0.5 ? 3 : 6;
     float value = 0.0;
     float amplitude = 0.5;
     float frequency = 1.0;
-    for (int i = 0; i < FBM_OCTAVES; i++) {
+    for (int i = 0; i < 6; i++) {
+      if (i >= octaves) break;
       value += amplitude * noise21(p * frequency);
       frequency *= 2.0;
       amplitude *= 0.5;
@@ -57,6 +59,7 @@ const fragmentShader = `
   }
 
   float getWaves(vec2 position) {
+    int waveIter = u_mobile > 0.5 ? 8 : 16;
     float iter = 0.0;
     float frequency = 1.0;
     float timeMultiplier = 2.0;
@@ -68,6 +71,7 @@ const fragmentShader = `
     float swellBias = 0.35;
 
     for(int i = 0; i < 16; i++) {
+      if (i >= waveIter) break;
       vec2 p = normalize(mix(vec2(sin(iter), cos(iter)), swellDir, swellBias));
       vec2 res = wavedx(position, p, frequency, u_time * timeMultiplier + length(position) * 0.1);
       position += p * res.y * weight * DRAG_MULT;
@@ -139,8 +143,8 @@ const fragmentShader = `
     vec2 screenUv = dirToScreenUV(dir);
     if (screenUv.x >= 0.0 && screenUv.x <= 1.0 && screenUv.y >= 0.0 && screenUv.y <= 1.0) {
       if (screenUv.y > 0.35) {
-        float gridX = 40.0;
-        float gridY = 30.0;
+        float gridX = u_mobile > 0.5 ? 20.0 : 40.0;
+        float gridY = u_mobile > 0.5 ? 15.0 : 30.0;
         vec2 grid = vec2(gridX, gridY);
         vec2 baseCell = floor(vec2(screenUv.x * gridX, screenUv.y * gridY));
         float s = 0.0;
@@ -167,7 +171,9 @@ const fragmentShader = `
   float raymarchWater(vec3 camera, vec3 start, vec3 end, float depth) {
     vec3 pos = start;
     vec3 dir = normalize(end - start);
+    int steps = u_mobile > 0.5 ? 16 : 32;
     for(int i = 0; i < 32; i++) {
+      if (i >= steps) break;
       float height = getWaves(pos.xz) * depth - depth;
       if(height + 0.01 > pos.y) {
         return distance(pos, camera);
@@ -254,7 +260,6 @@ const fragmentShader = `
       N = mix(N, vec3(0.0, 1.0, 0.0), 0.8 * min(1.0, sqrt(dist * 0.01) * 1.1));
 
       float waveH = getWaves(waterHitPos.xz);
-      float waveLine = smoothstep(0.0, 0.03, abs(waveH) - 0.15);
 
       float fresnelSharp = 0.3 + 0.7 * pow(1.0 - max(0.0, dot(-N, ray)), 5.0);
       float fresnelFlat = 0.3 + 0.7 * pow(1.0 - max(0.0, dot(vec3(0.0, 1.0, 0.0), -ray)), 5.0);
@@ -359,15 +364,18 @@ export default function WaveBackground() {
     const resLoc = gl.getUniformLocation(program, "u_resolution");
     const timeLoc = gl.getUniformLocation(program, "u_time");
     const nightLoc = gl.getUniformLocation(program, "u_night");
+    const mobileLoc = gl.getUniformLocation(program, "u_mobile");
 
     gl.enableVertexAttribArray(posLoc);
     gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
 
+    const mobile = window.innerWidth < 768;
     let width = 0;
     let height = 0;
 
     function resize() {
-      const dpr = window.devicePixelRatio || 1;
+      const baseDpr = window.devicePixelRatio || 1;
+      const dpr = mobile ? Math.min(baseDpr, 1.5) : baseDpr;
       width = window.innerWidth * dpr;
       height = window.innerHeight * dpr;
       canvas!.width = width;
@@ -405,6 +413,7 @@ export default function WaveBackground() {
       gl.uniform2f(resLoc, width, height);
       gl.uniform1f(timeLoc, t);
       gl.uniform1f(nightLoc, nightAmount);
+      gl.uniform1f(mobileLoc, mobile ? 1.0 : 0.0);
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
