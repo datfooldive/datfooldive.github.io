@@ -3,13 +3,12 @@
 
 :root {
     --bg: oklch(98% 0.002 250);
-    --fg: oklch(20% 0.015 250);
-    --muted: oklch(45% 0.015 250);
-    --link: oklch(45% 0.03 250);
+    --fg: oklch(0% 0 0);
+    --muted: oklch(25% 0.015 250);
+    --link: oklch(25% 0 0);
     background-color: var(--bg);
     color: var(--fg);
-    font-family: "Maple Mono", ui-monospace, monospace;
-    font-weight: 400;
+    font-family: "Departure Mono", ui-monospace, monospace;
     transition:
         background-color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
         color 0.5s cubic-bezier(0.4, 0, 0.2, 1);
@@ -17,9 +16,9 @@
 
 .dark {
     --bg: oklch(15% 0.002 250);
-    --fg: oklch(96% 0.008 250);
+    --fg: oklch(100% 0 0);
     --muted: oklch(75% 0.008 250);
-    --link: oklch(82% 0.02 250);
+    --link: oklch(75% 0 0);
 }
 
 body {

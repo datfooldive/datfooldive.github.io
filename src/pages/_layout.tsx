@@ -12,13 +12,6 @@ export default async function RootLayout({ children }: RootLayoutProps) {
   return (
     <I18nProvider>
       <div className="relative isolate min-h-svh overflow-hidden">
-        <link
-          rel="preload"
-          href="/fonts/maple-mono-latin-400-normal.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin=""
-        />
         <ThemeScript />
         <meta
           name="description"

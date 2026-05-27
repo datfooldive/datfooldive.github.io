@@ -1,7 +1,13 @@
 import PageContent from "../components/PageContent.js";
+import WaveBackground from "../components/WaveBackground.js";
 
 export default async function HomePage() {
-  return <PageContent />;
+  return (
+    <>
+      <WaveBackground />
+      <PageContent />
+    </>
+  );
 }
 
 export const getConfig = async () => {
