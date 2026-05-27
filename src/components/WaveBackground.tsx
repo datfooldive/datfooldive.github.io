@@ -275,7 +275,7 @@ const fragmentShader = `
       vec3 nightWater = mix(vec3(0.02, 0.02, 0.03), vec3(0.04, 0.04, 0.05), smoothstep(-0.5, 0.5, waterHitPos.y));
 
       vec3 waterBase = mix(dayWater, nightWater, u_night);
-      vec3 waterColor = mix(waterBase, vec3(1.0), detail * 0.25) * fresnel;
+      vec3 waterColor = waterBase * fresnel;
 
       float surfaceTexture = fbm(waterHitPos.xz * 2.0 + u_time * 0.3) * 0.15;
       waterColor += vec3(surfaceTexture) * 0.1;
