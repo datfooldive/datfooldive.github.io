@@ -64,7 +64,7 @@ const fragmentShader = `
     float sumOfValues = 0.0;
     float sumOfWeights = 0.0;
 
-    vec2 swellDir = normalize(vec2(-0.25, 1.0));
+    vec2 swellDir = vec2(-0.242535625036333, 0.970142500145331);
     float swellBias = 0.35;
 
     for(int i = 0; i < 16; i++) {
@@ -99,8 +99,8 @@ const fragmentShader = `
   vec2 dirToScreenUV(vec3 dir) {
     mat3 rotX = mat3(
       1.0, 0.0, 0.0,
-      0.0, cos(0.14), -sin(0.14),
-      0.0, sin(0.14), cos(0.14)
+      0.0, 0.990077, -0.139990,
+      0.0, 0.139990, 0.990077
     );
     vec3 unrotated = rotX * dir;
     if (unrotated.z <= 0.0) return vec2(-1.0);
@@ -160,23 +160,6 @@ const fragmentShader = `
     return color;
   }
 
-  mat3 createRotationMatrixAxisAngle(vec3 axis, float angle) {
-    float s = sin(angle);
-    float c = cos(angle);
-    float oc = 1.0 - c;
-    return mat3(
-      oc * axis.x * axis.x + c, oc * axis.x * axis.y - axis.z * s, oc * axis.z * axis.x + axis.y * s,
-      oc * axis.x * axis.y + axis.z * s, oc * axis.y * axis.y + c, oc * axis.y * axis.z - axis.x * s,
-      oc * axis.z * axis.x - axis.y * s, oc * axis.y * axis.z + axis.x * s, oc * axis.z * axis.z + c
-    );
-  }
-
-  vec3 getRay(vec2 fragCoord) {
-    vec2 uv = ((fragCoord.xy / u_resolution.xy) * 2.0 - 1.0) * vec2(u_resolution.x / u_resolution.y, 1.0);
-    vec3 proj = normalize(vec3(uv.x, uv.y, 1.5));
-    return createRotationMatrixAxisAngle(vec3(1.0, 0.0, 0.0), 0.14) * proj;
-  }
-
   float intersectPlane(vec3 origin, vec3 direction, vec3 point, vec3 normal) {
     return clamp(dot(point - origin, normal) / dot(direction, normal), -1.0, 9991999.0);
   }
@@ -225,7 +208,15 @@ const fragmentShader = `
 
   void main() {
     vec2 fragCoord = gl_FragCoord.xy;
-    vec3 ray = getRay(fragCoord);
+
+    mat3 rotX = mat3(
+      1.0, 0.0, 0.0,
+      0.0, 0.990077, -0.139990,
+      0.0, 0.139990, 0.990077
+    );
+    vec2 uv = ((fragCoord.xy / u_resolution.xy) * 2.0 - 1.0) * vec2(u_resolution.x / u_resolution.y, 1.0);
+    vec3 proj = normalize(vec3(uv.x, uv.y, 1.5));
+    vec3 ray = rotX * proj;
 
     float NIGHT_EPS = 0.001;
     vec3 C;
@@ -264,7 +255,6 @@ const fragmentShader = `
 
       float waveH = getWaves(waterHitPos.xz);
       float waveLine = smoothstep(0.0, 0.03, abs(waveH) - 0.15);
-      float detail = 1.0 - waveLine;
 
       float fresnelSharp = 0.3 + 0.7 * pow(1.0 - max(0.0, dot(-N, ray)), 5.0);
       float fresnelFlat = 0.3 + 0.7 * pow(1.0 - max(0.0, dot(vec3(0.0, 1.0, 0.0), -ray)), 5.0);
@@ -290,8 +280,8 @@ const fragmentShader = `
 
     float gray = dot(C, vec3(0.299, 0.587, 0.114));
     float t = u_time * 1.5;
-    vec2 uv = gl_FragCoord.xy / u_resolution;
-    float seed = dot(uv, vec2(12.9898, 78.233));
+    vec2 uvNoise = gl_FragCoord.xy / u_resolution;
+    float seed = dot(uvNoise, vec2(12.9898, 78.233));
     float noise = fract(sin(seed) * 43758.5453 + t);
     float variance = mix(0.85, 0.7, u_night);
     noise = (1.0 / (variance * sqrt(2.0 * 3.1415))) * exp(-(((noise - 0.0) * (noise - 0.0)) / (2.0 * (variance * variance))));
@@ -307,6 +297,8 @@ const fragmentShader = `
     gl_FragColor = vec4(C, 1.0);
   }
 `;
+
+const POSITIONS = new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]);
 
 function createShader(
   gl: WebGLRenderingContext,
@@ -361,49 +353,58 @@ export default function WaveBackground() {
 
     const posBuffer = gl.createBuffer();
     gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-    gl.bufferData(
-      gl.ARRAY_BUFFER,
-      new Float32Array([-1, -1, 1, -1, -1, 1, 1, 1]),
-      gl.STATIC_DRAW,
-    );
+    gl.bufferData(gl.ARRAY_BUFFER, POSITIONS, gl.STATIC_DRAW);
 
     const posLoc = gl.getAttribLocation(program, "a_position");
     const resLoc = gl.getUniformLocation(program, "u_resolution");
     const timeLoc = gl.getUniformLocation(program, "u_time");
     const nightLoc = gl.getUniformLocation(program, "u_night");
 
+    gl.enableVertexAttribArray(posLoc);
+    gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
+
+    let width = 0;
+    let height = 0;
+
     function resize() {
       const dpr = window.devicePixelRatio || 1;
-      canvas!.width = window.innerWidth * dpr;
-      canvas!.height = window.innerHeight * dpr;
+      width = window.innerWidth * dpr;
+      height = window.innerHeight * dpr;
+      canvas!.width = width;
+      canvas!.height = height;
       canvas!.style.width = window.innerWidth + "px";
       canvas!.style.height = window.innerHeight + "px";
-      gl!.viewport(0, 0, canvas!.width, canvas!.height);
+      gl!.viewport(0, 0, width, height);
     }
 
-    function getNightAmount() {
-      return document.documentElement.classList.contains("dark") ? 1.0 : 0.0;
-    }
+    let nightAmount = document.documentElement.classList.contains("dark")
+      ? 1.0
+      : 0.0;
+    const observer = new MutationObserver(() => {
+      nightAmount = document.documentElement.classList.contains("dark")
+        ? 1.0
+        : 0.0;
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ["class"],
+    });
 
     resize();
     window.addEventListener("resize", resize);
 
     let animId: number;
-    const startTime = Date.now();
+    const startTime = performance.now();
 
     function render() {
       if (!gl || !program) return;
 
       gl.useProgram(program);
 
-      gl.enableVertexAttribArray(posLoc);
-      gl.bindBuffer(gl.ARRAY_BUFFER, posBuffer);
-      gl.vertexAttribPointer(posLoc, 2, gl.FLOAT, false, 0, 0);
-
-      const t = (Date.now() - startTime) / 1000;
-      gl.uniform2f(resLoc, canvas!.width, canvas!.height);
+      const t = (performance.now() - startTime) / 1000;
+      gl.uniform2f(resLoc, width, height);
       gl.uniform1f(timeLoc, t);
-      gl.uniform1f(nightLoc, getNightAmount());
+      gl.uniform1f(nightLoc, nightAmount);
 
       gl.drawArrays(gl.TRIANGLE_STRIP, 0, 4);
 
@@ -415,6 +416,7 @@ export default function WaveBackground() {
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", resize);
+      observer.disconnect();
     };
   }, []);
 
